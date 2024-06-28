@@ -12,12 +12,17 @@ import ray
 import subprocess
 import time
 
+import sys
+
+# setting path
+sys.path.append('/home/siqi/PycharmProjects/GripperDesign/')
+
 from assets.finger_sampler import generate_gripper, save_gripper, generate_xml, generate_scene_xml
 from assets.object_sampler import  generate_object_xml
 from assets.icon_process import save_icon_mesh, extract_contours
 from dynamics.utils import continuous_signed_delta
 
-OBJECT_DIR = '<directory to 2d icons>/Icons-50.npy'
+OBJECT_DIR = 'data/Icons-50.npy'
 
 def compute_collision(mesh_path, num_retries: int = 2):
     """
@@ -42,7 +47,7 @@ def compute_collision(mesh_path, num_retries: int = 2):
     ```
     """
     COMMAND = [
-        "TestVHACD",
+        "./TestVHACD",
         mesh_path,
         "-r",
         "100000",
