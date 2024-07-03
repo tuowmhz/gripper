@@ -1,6 +1,11 @@
 import os
-import glob
 import sys
+from os.path import join as pjoin
+
+BASEPATH = os.path.dirname(__file__)
+sys.path.insert(0, BASEPATH)
+sys.path.insert(0, pjoin(BASEPATH, '..'))
+import glob
 from typing import Optional
 
 import mujoco
@@ -12,17 +17,13 @@ import ray
 import subprocess
 import time
 
-import sys
-
-# setting path
-sys.path.append('/home/siqi/PycharmProjects/GripperDesign/')
-
 from assets.finger_sampler import generate_gripper, save_gripper, generate_xml, generate_scene_xml
-from assets.object_sampler import  generate_object_xml
+from assets.object_sampler import generate_object_xml
 from assets.icon_process import save_icon_mesh, extract_contours
 from dynamics.utils import continuous_signed_delta
 
-OBJECT_DIR = 'data/Icons-50.npy'
+OBJECT_DIR = '<directory to 2D icons>/Icons-50.npy'
+
 
 def compute_collision(mesh_path, num_retries: int = 2):
     """
@@ -47,7 +48,7 @@ def compute_collision(mesh_path, num_retries: int = 2):
     ```
     """
     COMMAND = [
-        "./TestVHACD",
+        "TestVHACD",
         mesh_path,
         "-r",
         "100000",
@@ -71,6 +72,7 @@ def compute_collision(mesh_path, num_retries: int = 2):
     if output is None or output.returncode != 0:
         raise RuntimeError("V-HACD failed to run on %s" % mesh_path)
 
+
 def prepare_gripper(gripper_idx: int, model_root: str):
     rs = np.random.RandomState(gripper_idx)
     x = np.linspace(-0.12, 0.12, 7)
@@ -91,7 +93,9 @@ def prepare_gripper(gripper_idx: int, model_root: str):
         compute_collision(meshl_path)
         meshr_path = os.path.join(save_gripper_dir, "fingerr.obj")
         compute_collision(meshr_path)
-        generate_xml(len(glob.glob(os.path.join(save_gripper_dir, "fingerl0*.obj"))), len(glob.glob(os.path.join(save_gripper_dir, "fingerr0*.obj"))), gripper_idx, os.path.join(model_root, 'gripper_%d.xml' % gripper_idx))
+        generate_xml(len(glob.glob(os.path.join(save_gripper_dir, "fingerl0*.obj"))),
+                     len(glob.glob(os.path.join(save_gripper_dir, "fingerr0*.obj"))), gripper_idx,
+                     os.path.join(model_root, 'gripper_%d.xml' % gripper_idx))
     else:
         ctrlpts, allpts = generate_gripper(
             x,
@@ -101,18 +105,21 @@ def prepare_gripper(gripper_idx: int, model_root: str):
         )
     return ctrlpts, allpts
 
+
 def prepare_icon_object(object_idx, image, model_root):
     save_object_dir = os.path.join(model_root, 'objects', str(object_idx))
     if not os.path.exists(save_object_dir):
         contour, mesh_path = save_icon_mesh(image, 0.02, 100, save_object_dir)
         compute_collision(mesh_path)
-        generate_object_xml(len(glob.glob(os.path.join(save_object_dir, "object0*.obj"))), object_idx, os.path.join(model_root, 'object_%d.xml' % object_idx))
+        generate_object_xml(len(glob.glob(os.path.join(save_object_dir, "object0*.obj"))), object_idx,
+                            os.path.join(model_root, 'object_%d.xml' % object_idx))
     else:
         contour = extract_contours(image)
     return contour
 
+
 @ray.remote(num_cpus=2)
-def main(model_root, object_image, gripper_idx: int=0, object_idx: int=0, save_dir: str="sim", gui: bool = False):
+def main(model_root, object_image, gripper_idx: int = 0, object_idx: int = 0, save_dir: str = "sim", gui: bool = False):
     ctrlpts, allpts = prepare_gripper(gripper_idx, model_root)
     object_vertices = prepare_icon_object(object_idx, object_image, model_root)
     scene_path = os.path.join(model_root, 'scene_%d_%d.xml' % (object_idx, gripper_idx))
@@ -120,7 +127,10 @@ def main(model_root, object_image, gripper_idx: int=0, object_idx: int=0, save_d
 
     timeout = 1
     start_time = time.time()
-    while not (os.path.exists(os.path.join(model_root, 'object_%d.xml' % object_idx)) and os.path.getsize(os.path.join(model_root, 'object_%d.xml' % object_idx))>0 and os.path.exists(os.path.join(model_root, 'gripper_%d.xml' % gripper_idx)) and os.path.getsize(os.path.join(model_root, 'gripper_%d.xml' % gripper_idx))>0):
+    while not (os.path.exists(os.path.join(model_root, 'object_%d.xml' % object_idx)) and os.path.getsize(
+            os.path.join(model_root, 'object_%d.xml' % object_idx)) > 0 and os.path.exists(
+            os.path.join(model_root, 'gripper_%d.xml' % gripper_idx)) and os.path.getsize(
+            os.path.join(model_root, 'gripper_%d.xml' % gripper_idx)) > 0):
         if time.time() - start_time > timeout:
             raise RuntimeError("Timeout waiting for object_%d.xml and gripper_%d.xml" % (object_idx, gripper_idx))
         time.sleep(0.1)
@@ -138,8 +148,8 @@ def main(model_root, object_image, gripper_idx: int=0, object_idx: int=0, save_d
     assert obj_jnt.type == 0  # freejoint
 
     z_rots = np.arange(0.0, 2 * np.pi, 2 * np.pi / 360)
-    x_locs = -0.03+0.06*np.arange(5)/4
-    y_locs = -0.03+0.06*np.arange(5)/4
+    x_locs = -0.03 + 0.06 * np.arange(5) / 4
+    y_locs = -0.03 + 0.06 * np.arange(5) / 4
     init_poses = np.zeros((len(z_rots), len(x_locs), len(y_locs), 7))
     final_poses = np.zeros((len(z_rots), len(x_locs), len(y_locs), 7))
     for i, x_loc in enumerate(x_locs):
@@ -148,17 +158,17 @@ def main(model_root, object_image, gripper_idx: int=0, object_idx: int=0, save_d
                 data.qpos[:] = reset_qpos[:]
                 data.qvel[:] = reset_qvel[:]
                 data.qfrc_applied[:] = reset_force
-                data.qpos[obj_jnt.qposadr[0] : obj_jnt.qposadr[0] + 3] = [
+                data.qpos[obj_jnt.qposadr[0]: obj_jnt.qposadr[0] + 3] = [
                     x_loc,
                     y_loc,
                     0,
                 ]
                 data.qpos[
-                    obj_jnt.qposadr[0] + 3 : obj_jnt.qposadr[0] + 7
+                obj_jnt.qposadr[0] + 3: obj_jnt.qposadr[0] + 7
                 ] = euler.euler2quat(0, 0, z_rot)
                 init_poses[k, i, j, :] = data.qpos[
-                    obj_jnt.qposadr[0] : obj_jnt.qposadr[0] + 7
-                ]
+                                         obj_jnt.qposadr[0]: obj_jnt.qposadr[0] + 7
+                                         ]
                 data.ctrl[0] = 0.2
                 data.ctrl[1] = -0.2
                 # step for 1 second
@@ -168,20 +178,25 @@ def main(model_root, object_image, gripper_idx: int=0, object_idx: int=0, save_d
                         input(f"Press Enter to continue..., {t}")
                     mujoco.mj_step(model, data)
                 final_poses[k, i, j, :] = data.qpos[
-                    obj_jnt.qposadr[0] : obj_jnt.qposadr[0] + 7
-                ]
+                                          obj_jnt.qposadr[0]: obj_jnt.qposadr[0] + 7
+                                          ]
     save_data = {
         "ctrlpts": ctrlpts,
         "allpts": allpts,
         "object_vertices": object_vertices,
         "obj_pos": init_poses[..., :3].reshape((-1, 3)),
-        "obj_theta": np.asarray([quaternions.quat2axangle(quat)[-1] for quat in init_poses[..., 3:].reshape((-1, 4))], dtype=np.float32),
-        "delta_theta": np.asarray([continuous_signed_delta(quaternions.quat2axangle(last_quat)[-1], quaternions.quat2axangle(quat)[-1]) for last_quat, quat in zip(init_poses[..., 3:].reshape((-1, 4)), final_poses[..., 3:].reshape((-1, 4)))], dtype=np.float32),
+        "obj_theta": np.asarray([quaternions.quat2axangle(quat)[-1] for quat in init_poses[..., 3:].reshape((-1, 4))],
+                                dtype=np.float32),
+        "delta_theta": np.asarray(
+            [continuous_signed_delta(quaternions.quat2axangle(last_quat)[-1], quaternions.quat2axangle(quat)[-1]) for
+             last_quat, quat in zip(init_poses[..., 3:].reshape((-1, 4)), final_poses[..., 3:].reshape((-1, 4)))],
+            dtype=np.float32),
         "delta_pos": (final_poses[..., :3] - init_poses[..., :3]).reshape((-1, 3)),
     }
     os.makedirs(save_dir, exist_ok=True)
     np.savez_compressed(os.path.join(save_dir, "%d_%d.npz" % (object_idx, gripper_idx)), save_data)
-    
+
+
 if __name__ == "__main__":
     model_root = sys.argv[1]
     gripper_idx = int(sys.argv[2])
@@ -193,7 +208,10 @@ if __name__ == "__main__":
     object_image = np.load(OBJECT_DIR, allow_pickle=True).item()['image'][object_idx].transpose((1, 2, 0))
 
     ray.init(num_cpus=num_cpus, log_to_driver=False)
-    ray_tasks = [main.remote(model_root=model_root, object_image=object_image, gripper_idx=g_idx, object_idx=o_idx, save_dir=save_dir, gui=False) for g_idx in range(gripper_idx, gripper_idx+num_gripper_parallel) for o_idx in range(object_idx, object_idx+num_object_parallel)]
+    ray_tasks = [main.remote(model_root=model_root, object_image=object_image, gripper_idx=g_idx, object_idx=o_idx,
+                             save_dir=save_dir, gui=False) for g_idx in
+                 range(gripper_idx, gripper_idx + num_gripper_parallel) for o_idx in
+                 range(object_idx, object_idx + num_object_parallel)]
     while len(ray_tasks) > 0:
         ready, ray_tasks = ray.wait(ray_tasks, num_returns=1)
         try:
