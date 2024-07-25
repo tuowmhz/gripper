@@ -22,7 +22,7 @@ from assets.object_sampler import generate_object_xml
 from assets.icon_process import save_icon_mesh, extract_contours
 from dynamics.utils import continuous_signed_delta
 
-OBJECT_DIR = '<directory to 2D icons>/Icons-50.npy'
+OBJECT_DIR = 'data/Icons-50.npy'
 
 
 def compute_collision(mesh_path, num_retries: int = 2):

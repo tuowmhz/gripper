@@ -34,7 +34,7 @@ torch.multiprocessing.set_sharing_strategy("file_system")
 
 rank_idx = os.environ.get("NODE_RANK", 0)
 # OBJECT_IDS = [10000, 2009, 2114, 2082, 1041, 2048, 1045, 1019]
-OBJECT_IDS = [2009, 2114, 2082, 1041, 2048, 1045, 1019]
+OBJECT_IDS = [0, 37, 50]
 
 
 def train(args):
@@ -69,6 +69,7 @@ def train(args):
     if args.mode == 'test':
         test_dataset = GripperDataset(gripper_pts, gripper_pts_max_x, gripper_pts_min_x, gripper_pts_max_y,
                                       gripper_pts_min_y)
+        print('test dataset size:', len(test_dataset))
         test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers,
                                  drop_last=True)
     else:
@@ -172,12 +173,13 @@ def train(args):
                 LearningRateMonitor(logging_interval="step"),
             )
         )
-    trainer = LightningTrainer(accelerator='gpu', devices=-1, check_val_every_n_epoch=args.val_step,
+    trainer = LightningTrainer(accelerator='gpu', devices=1, num_nodes=1, check_val_every_n_epoch=args.val_step,
                                log_every_n_steps=1, max_epochs=args.num_epochs, logger=wandb_logger,
                                default_root_dir=args.save_dir, callbacks=callbacks, inference_mode=False)
     # shortcut for inference only
     if args.mode == 'test':
         trainer.validate(diffusion_model, test_loader, ckpt_path=args.diffusion_checkpoint_path)
+        print('inference done')
         return
 
     if args.diffusion_checkpoint_path is not None:
