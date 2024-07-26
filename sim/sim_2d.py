@@ -48,7 +48,7 @@ def compute_collision(mesh_path, num_retries: int = 2):
     ```
     """
     COMMAND = [
-        "TestVHACD",
+        "./TestVHACD",
         mesh_path,
         "-r",
         "100000",

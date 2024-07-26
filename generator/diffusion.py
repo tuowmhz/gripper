@@ -177,6 +177,7 @@ class Diffusion(LightningModule):
         return total_loss
     
     def validation_step(self, tensor_data, batch_idx):
+        print("validation step")
         batch_size = tensor_data.shape[0]
         sample = tensor_data.clone().detach()    # noise, (B, num_points, input_dim)
         rs = np.random.RandomState(self.seed)
@@ -242,6 +243,7 @@ class Diffusion(LightningModule):
             on_step=True,
             on_epoch=True,
         )
+        print(noise_pred_loss, loss, accuracy)
         # unguided sample
         if (self.current_epoch > 0 or self.on_validation_batch_start) and batch_idx == 0:
             noise_sample = noise.clone().detach()
@@ -296,6 +298,7 @@ class Diffusion(LightningModule):
                 # unguided sample
                 ori_ranges = [[-1.0, 1.0]]
                 if True:
+                    print("getting videos")
                     num_objects = len(self.object_ids)
                     num_grippers = noise_sample.shape[0]
                     if self.mode == "point_3d":
@@ -304,10 +307,11 @@ class Diffusion(LightningModule):
                     else:
                         _, metrics, profiles, profiles_x, profiles_y, finals, videos, _ = sim_test_batch(noise_sample.cpu().numpy(), self.object_ids, os.path.join(self.logger.save_dir, 'val_vis_noise'), render=self.render_video, num_cpus=self.num_cpus)
                         imgs_all = [imgs[idx] for _ in range(num_objects) for idx in range(len(imgs))]
+                    print("video done")
                 for opt_obj in ['convergence', 'shift_up', 'shift_down', 'shift_left', 'shift_right', 'rotate_clockwise', 'rotate_counterclockwise', 'rotate', 'clockwise_up', 'clockwise_left', 'counterclockwise_up', 'counterclockwise_left']:
                     for ori_range in ori_ranges:
                         if True:
-                            metrics_unguided = [{k: metric[k][int((ori_range[0]+1)*180):int((ori_range[1]+1)*180)] for k in metric.keys()} for metric in metrics]
+                            metrics_unguided = [{k: metric[k][int((ori_range[0]+1)*6):int((ori_range[1]+1)*6)] for k in metric.keys()} for metric in metrics]
                             objectives_unguided = [metric2objective(metric, opt_obj) for metric in metrics_unguided]
                             print('objectives_unguided', len(objectives_unguided))
                             average_objectives = {k: np.mean([objective[k] for objective in objectives_unguided]) for k in objectives_unguided[0].keys()}
@@ -575,9 +579,9 @@ class Diffusion(LightningModule):
                 noise_pred = noise_pred - (1 - self.noise_scheduler.alphas_cumprod[t]).sqrt() * grad * classifier_scale
                 sample = self.noise_scheduler.step(noise_pred, t, sample).prev_sample
             if self.mode == "point_3d":
-                gripper_imgs, metrics, profiles, profiles_x, profiles_y, finals, videos, save_gripper_dirs = sim_test_batch_3d(sample.cpu().numpy(), [object_idx], os.path.join(result_save_dir, str(object_idx)), render=self.render_video, num_cpus=self.num_cpus, num_rot=int((ori_range[1]-ori_range[0])*180), ori_range=ori_range, render_last=(not self.render_video))
+                gripper_imgs, metrics, profiles, profiles_x, profiles_y, finals, videos, save_gripper_dirs = sim_test_batch_3d(sample.cpu().numpy(), [object_idx], os.path.join(result_save_dir, str(object_idx)), render=self.render_video, num_cpus=self.num_cpus, num_rot=int((ori_range[1]-ori_range[0])*6), ori_range=ori_range, render_last=(not self.render_video))
             else:
-                gripper_imgs, metrics, profiles, profiles_x, profiles_y, finals, videos, save_gripper_dirs = sim_test_batch(sample.cpu().numpy(), [object_idx], os.path.join(result_save_dir, str(object_idx)), render=self.render_video, num_cpus=self.num_cpus, num_rot=int((ori_range[1]-ori_range[0])*180), ori_range=ori_range, render_last=(not self.render_video))
+                gripper_imgs, metrics, profiles, profiles_x, profiles_y, finals, videos, save_gripper_dirs = sim_test_batch(sample.cpu().numpy(), [object_idx], os.path.join(result_save_dir, str(object_idx)), render=self.render_video, num_cpus=self.num_cpus, num_rot=int((ori_range[1]-ori_range[0])*6), ori_range=ori_range, render_last=(not self.render_video))
             if len(metrics) == 0:
                 continue
             objectives = [metric2objective(metric, opt_obj) for metric in metrics]
@@ -678,9 +682,9 @@ class Diffusion(LightningModule):
         for idx, s in enumerate(all_samples):
             s = np.expand_dims(s, axis=0)
             if self.mode == "point_3d":
-                gripper_imgs, metrics, _, _, _, _, videos, save_gripper_dirs = sim_test_batch_3d(s, self.object_ids, os.path.join(result_save_dir, 'allobj_%d' % idx), render=self.render_video, num_cpus=self.num_cpus, num_rot=int((ori_range[1]-ori_range[0])*180), ori_range=ori_range, render_last=(not self.render_video))
+                gripper_imgs, metrics, _, _, _, _, videos, save_gripper_dirs = sim_test_batch_3d(s, self.object_ids, os.path.join(result_save_dir, 'allobj_%d' % idx), render=self.render_video, num_cpus=self.num_cpus, num_rot=int((ori_range[1]-ori_range[0])*6), ori_range=ori_range, render_last=(not self.render_video))
             else:
-                gripper_imgs, metrics, _, _, _, _, videos, save_gripper_dirs = sim_test_batch(s, self.object_ids, os.path.join(result_save_dir, 'allobj_%d' % idx), render=self.render_video, num_cpus=self.num_cpus, num_rot=int((ori_range[1]-ori_range[0])*180), ori_range=ori_range, render_last=(not self.render_video))
+                gripper_imgs, metrics, _, _, _, _, videos, save_gripper_dirs = sim_test_batch(s, self.object_ids, os.path.join(result_save_dir, 'allobj_%d' % idx), render=self.render_video, num_cpus=self.num_cpus, num_rot=int((ori_range[1]-ori_range[0])*6), ori_range=ori_range, render_last=(not self.render_video))
             if len(metrics) != num_objects:
                 continue
             objectives = [metric2objective(metric, opt_obj) for metric in metrics]

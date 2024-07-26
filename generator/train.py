@@ -34,7 +34,8 @@ torch.multiprocessing.set_sharing_strategy("file_system")
 
 rank_idx = os.environ.get("NODE_RANK", 0)
 # OBJECT_IDS = [10000, 2009, 2114, 2082, 1041, 2048, 1045, 1019]
-OBJECT_IDS = [0, 37, 50]
+# OBJECT_IDS = [0, 37, 50]
+OBJECT_IDS = [0]
 
 
 def train(args):
@@ -179,7 +180,6 @@ def train(args):
     # shortcut for inference only
     if args.mode == 'test':
         trainer.validate(diffusion_model, test_loader, ckpt_path=args.diffusion_checkpoint_path)
-        print('inference done')
         return
 
     if args.diffusion_checkpoint_path is not None:
