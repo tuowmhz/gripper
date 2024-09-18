@@ -40,6 +40,7 @@ OBJECT_IDS = [0]
 
 def train(args):
     total_num = args.num_fingers
+    batch_size = min(args.batch_size, args.num_fingers)
     train_ids = list(range(int(total_num * 0.9)))
     val_ids = list(range(int(total_num * 0.9), total_num))
     gripper_pts = []
@@ -71,16 +72,16 @@ def train(args):
         test_dataset = GripperDataset(gripper_pts, gripper_pts_max_x, gripper_pts_min_x, gripper_pts_max_y,
                                       gripper_pts_min_y)
         print('test dataset size:', len(test_dataset))
-        test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers,
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=args.num_workers,
                                  drop_last=True)
     else:
         train_dataset = GripperDataset(gripper_pts[train_ids, ...], gripper_pts_max_x, gripper_pts_min_x,
                                        gripper_pts_max_y, gripper_pts_min_y)
         val_dataset = GripperDataset(gripper_pts[val_ids, ...], gripper_pts_max_x, gripper_pts_min_x, gripper_pts_max_y,
                                      gripper_pts_min_y)
-        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=args.num_workers,
                                   drop_last=False)
-        val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers,
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=args.num_workers,
                                 drop_last=False)
 
     input_spline_dim = 1
