@@ -132,6 +132,7 @@ def train(args):
             object_vertices = []
             object_image = np.load(args.object_dir, allow_pickle=True).item()['image']
             object_ids = OBJECT_IDS
+            print("Image shape before cvtColor:", object_image.shape)
             for object_idx in object_ids:
                 contour = extract_contours(object_image[object_idx].transpose((1, 2, 0)))
                 contour = torch.from_numpy(contour).float()
