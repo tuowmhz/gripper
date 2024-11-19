@@ -12,7 +12,6 @@ class GripperDataset(Dataset):
         
     def __len__(self):
         return len(self.gripper_pts)
-    
     def __getitem__(self, idx):
         # IMPORTANT: normalize the input to [-1, 1]
         ctrlpts = self.gripper_pts[idx, :, 1].astype(np.float32)

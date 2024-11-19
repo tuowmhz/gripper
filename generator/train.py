@@ -1,3 +1,4 @@
+from geomdl.exchange import import_txt
 from pytorch_lightning import Trainer as LightningTrainer
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import (
@@ -8,6 +9,7 @@ from pytorch_lightning.callbacks import (
 import numpy as np
 import os
 import sys
+import cv2
 from os.path import join as pjoin
 
 BASEPATH = os.path.dirname(__file__)
@@ -134,7 +136,23 @@ def train(args):
             object_ids = OBJECT_IDS
             print("Image shape before cvtColor:", object_image.shape)
             for object_idx in object_ids:
-                contour = extract_contours(object_image[object_idx].transpose((1, 2, 0)))
+                single_image = object_image[object_idx]
+                print("Shape of single_image:", single_image.shape)  # Debugging info
+                print("Image dtype in extract_contours:", single_image.dtype)
+                #single_image = single_image.transpose((1, 2, 0))
+
+                # Ensure the image has 3 channels
+                if len(single_image.shape) != 3 or single_image.shape[-1] != 3:
+                    raise ValueError(f"Unexpected single_image shape: {single_image.shape}")
+
+                # Debug: Test cvtColor manually
+                #print("Testing cv2.cvtColor on single_image...")
+                #gray = cv2.cvtColor(single_image, cv2.COLOR_BGR2GRAY)
+                #print("Grayscale conversion successful!")
+
+
+                contour = extract_contours(single_image)
+                #contour = extract_contours(object_image[object_idx].transpose((1, 2, 0)))
                 contour = torch.from_numpy(contour).float()
                 object_vertices.append(contour)
             object_vertices = torch.stack(object_vertices, dim=0)
