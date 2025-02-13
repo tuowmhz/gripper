@@ -43,7 +43,7 @@ OBJECT_IDS = [0]
 def train(args):
     total_num = args.num_fingers
     batch_size = min(args.batch_size, args.num_fingers)
-    train_ids = list(range(int(total_num * 0.9)))
+    train_ids = list(range(int(total_num * 0.9))) # why it need to multiply 0。9
     val_ids = list(range(int(total_num * 0.9), total_num))
     gripper_pts = []
     for idx in range(total_num):
@@ -95,13 +95,18 @@ def train(args):
     mode = 'point_3d' if args.fingers_3d else 'point'
     input_dim = input_spline_dim
     scheduler = DDIMScheduler(num_train_timesteps=args.num_train_timesteps, beta_schedule='squaredcos_cap_v2',
-                              clip_sample=True, prediction_type='epsilon')  # squared cosine beta schedule
+                              clip_sample=True, prediction_type='epsilon')  # squared cosine beta schedule # DDIM schedule is a duffision model classifier - Denoising Diffusion Implicit models - improved upon the original Denoising Diffusion Probabilistic Model
+    
+    # In Line 89 - 97, it initialize the diffusion model process.
+    
     if args.classifier_guidance:
         if args.fingers_3d:
             classifier_model = nn.DataParallel(ProfileForward3DModel(output_ch=3, params_ch=num_spline_points).cuda())
         else:
             classifier_model = nn.DataParallel(ProfileForward2DModel(output_ch=3, params_ch=num_spline_points,
                                                                      object_ch=2 * args.object_max_num_vertices).cuda())
+            
+    # In this section, it loaded the already trained classifier model from the bash command and initualize the parallel computing process - distribute the training batch to  multiple GPUs.
         print('loading classifier checkpoint from', args.checkpoint_path)
         classifier_model.load_state_dict(torch.load(args.checkpoint_path))
         for param in classifier_model.parameters():
@@ -121,6 +126,7 @@ def train(args):
                 object_vertices.append(torch.from_numpy(pts).float())
             object_vertices = torch.stack(object_vertices, dim=0)
             object_vertices[..., 0] = (object_vertices[..., 0] - object_pts_min_x) / (
+                
                         object_pts_max_x - object_pts_min_x) * 2.0 - 1.0
             object_vertices[..., 1] = (object_vertices[..., 1] - object_pts_min_y) / (
                         object_pts_max_y - object_pts_min_y) * 2.0 - 1.0
@@ -132,18 +138,47 @@ def train(args):
             object_pts_max_y = 0.05
             object_pts_min_y = -0.05
             object_vertices = []
+            print("simple test")
+
             object_image = np.load(args.object_dir, allow_pickle=True).item()['image']
+
+            # Load the object from the corresponding directionary.
+
+
+            # # Load the .npy file
+            # loaded_data = np.load(args.object_dir, allow_pickle=True).item()
+            #
+            # # Check for the 'image' key and handle missing key gracefully
+            # if 'image' in loaded_data:
+            #     object_image = loaded_data['image']
+            #     print("Image data loaded successfully.")
+            # else:
+            #     raise KeyError(
+            #         f"'image' key not found in the loaded file at {args.object_dir}. Available keys: {loaded_data.keys()}")
+
+            print("Image Shape")
+            print(len(object_image))
+            print("Image Shape")
+            print(object_image.shape)
+            # print(object_image.shape)
+            # print("Image Array")
+            # print(object_image)
             object_ids = OBJECT_IDS
-            print("Image shape before cvtColor:", object_image.shape)
+            #print("Image shape before cvtColor:", object_image.shape)
             for object_idx in object_ids:
                 single_image = object_image[object_idx]
                 print("Shape of single_image:", single_image.shape)  # Debugging info
+                if len(single_image.shape) == 3:  # Check if the image has multiple channels
+                    count_255_per_channel = np.sum(single_image == 255, axis=(0, 1))  # Sum along height and width
+                    print(f"255 count per channel: {count_255_per_channel}")
+                else:
+                    print(f"The number of 255 values in the array: {count_255_per_channel}")
                 print("Image dtype in extract_contours:", single_image.dtype)
-                #single_image = single_image.transpose((1, 2, 0))
+                single_image = single_image.transpose((1, 2, 0))
 
                 # Ensure the image has 3 channels
-                if len(single_image.shape) != 3 or single_image.shape[-1] != 3:
-                    raise ValueError(f"Unexpected single_image shape: {single_image.shape}")
+                #if len(single_image.shape) != 3 or single_image.shape[-1] != 3:
+                 #   raise ValueError(f"Unexpected single_image shape: {single_image.shape}")
 
                 # Debug: Test cvtColor manually
                 #print("Testing cv2.cvtColor on single_image...")
@@ -152,15 +187,40 @@ def train(args):
 
 
                 contour = extract_contours(single_image)
+                # triangle_contour_path = "./data/triangle_contour.npy"
+                # contour = np.load(triangle_contour_path)  # Load as a NumPy array
+                
+                
+                
+                # # sys.exit()
+                # contour = torch.from_numpy(contour).float()  # Convert to a PyTorch tensor
+                # if not isinstance(contour_data, np.ndarray):
+                #     raise TypeError(f"Expected contour data as a NumPy array, but got {type(contour_data)}.")
+                #
+                # contour = torch.from_numpy(contour_data).float()  # Convert to PyTorch tensor
+
+                # contour = extract_contours(single_image)
+                print(f"Contour (NumPy) data type: {contour.dtype}")
+                print(f"Contour (NumPy) shape: {contour.shape}")
+                print(f"Contour (NumPy) contents: {contour[:5]}")  # Print the first 5 rows for example
+
+                # contour = torch.from_numpy(contour).float()
+                print(f"Contour (PyTorch) data type: {contour.dtype}")
+                print(f"Contour (PyTorch) shape: {contour.shape}")
+                print(f"Contour (PyTorch) contents: {contour[:5]}")  # Print the first 5 rows for example
+
                 #contour = extract_contours(object_image[object_idx].transpose((1, 2, 0)))
                 contour = torch.from_numpy(contour).float()
                 object_vertices.append(contour)
+                # object_vertices stores the contour data for each object as a list of tensors
             object_vertices = torch.stack(object_vertices, dim=0)
             object_vertices[..., 0] = (object_vertices[..., 0] - object_pts_min_x) / (
                         object_pts_max_x - object_pts_min_x) * 2.0 - 1.0
             object_vertices[..., 1] = (object_vertices[..., 1] - object_pts_min_y) / (
                         object_pts_max_y - object_pts_min_y) * 2.0 - 1.0
+            # dimension [..., 0] and [..., 1] represents all the data from x (0) axis and y (1) axis and are normalized to [-1, 1]
     else:
+    # We have the classifier guidance in bash command, so we do not care about this.
         classifier_model = None
         object_vertices = None
         object_ids = None

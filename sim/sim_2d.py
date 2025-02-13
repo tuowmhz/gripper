@@ -22,14 +22,14 @@ from assets.object_sampler import generate_object_xml
 from assets.icon_process import save_icon_mesh, extract_contours
 from dynamics.utils import continuous_signed_delta
 
-OBJECT_DIR = 'data/Icons-50.npy'
+OBJECT_DIR = 'data/star_shape.npy'
 
 
 def compute_collision(mesh_path, num_retries: int = 2):
     """
     Computes the convex decomposition of a mesh using v-hacd.
     Convention: the input mesh is assumed to be in the same folder as the output mesh,
-    with only the name change from `xyz.obj` to `xyz_collision.obj`.
+    with only the name change from `xyz.ßobj` to `xyz_collision.obj`.
 
     V-HACD help:
     ```
@@ -79,6 +79,11 @@ def prepare_gripper(gripper_idx: int, model_root: str):
     yl = rs.uniform(-0.045, 0.015, size=(7))
     yr = rs.uniform(-0.045, 0.015, size=(7))
     save_gripper_dir = os.path.join(model_root, 'grippers', str(gripper_idx))
+    # Debuging what are the two folders 0 and 1 in sim_model-gripper
+
+    print("save gripper dir:", save_gripper_dir)
+    print("Gripper_idx: ". gripper_idx)
+
     if not os.path.exists(save_gripper_dir):
         ctrlpts, allpts = save_gripper(
             x,
@@ -119,7 +124,7 @@ def prepare_icon_object(object_idx, image, model_root):
 
 
 @ray.remote(num_cpus=2)
-def main(model_root, object_image, gripper_idx: int = 0, object_idx: int = 0, save_dir: str = "sim", gui: bool = False):
+def main(model_root, object_image, gripper_idx: int = 0, object_idx: int = 0, save_dir: str = "sim", gui: bool = False): # Modified the gripper_idx form 0 to 2
     ctrlpts, allpts = prepare_gripper(gripper_idx, model_root)
     object_vertices = prepare_icon_object(object_idx, object_image, model_root)
     scene_path = os.path.join(model_root, 'scene_%d_%d.xml' % (object_idx, gripper_idx))
@@ -205,7 +210,15 @@ if __name__ == "__main__":
     num_object_parallel = int(sys.argv[5])
     save_dir = sys.argv[6]
     num_cpus = int(sys.argv[7])
-    object_image = np.load(OBJECT_DIR, allow_pickle=True).item()['image'][object_idx].transpose((1, 2, 0))
+    data = np.load(OBJECT_DIR, allow_pickle=True).item()
+    images = data["image"]
+    print(f"Type of images: {type(images)}")
+    print(f"Shape of images (if NumPy array): {images.shape if isinstance(images, np.ndarray) else 'Not an array'}")
+    print(f"Sample image: {images[0]}")
+
+    object_image = np.load(OBJECT_DIR, allow_pickle=True).item()['image'][object_idx].transpose((1, 2, 0))  # here I modified the transpose and deleted the objectidxto fit the image shape
+
+    #object_image = np.load(OBJECT_DIR, allow_pickle=True).item()['image'][object_idx].transpose((1, 2, 0))
 
     ray.init(num_cpus=num_cpus, log_to_driver=False)
     ray_tasks = [main.remote(model_root=model_root, object_image=object_image, gripper_idx=g_idx, object_idx=o_idx,

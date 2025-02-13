@@ -125,6 +125,7 @@ def prepare_finger(idx: int, ctrlpts, model_root: str):
 # @profile
 @ray.remote(num_cpus=2)
 def sim_test(
+    #Simulate the interaction between gripper and object
     ctrlpts,
     object_image,
     gripper_idx: int = 0,
@@ -143,6 +144,9 @@ def sim_test(
 
     scene_path = os.path.join(model_root, "scene_%d_%d.xml" % (object_idx, gripper_idx))
     generate_scene_xml(object_idx, gripper_idx, scene_path)
+
+    #In summary, a Ray task in this code refers to a unit of work created using the sim_test.remote function call. These tasks are scheduled and executed in parallel using the Ray library. The code creates a list of Ray tasks, processes them in a loop, and stores the results in dictionaries. This approach allows for efficient parallel processing of simulations, leveraging multiple CPUs to speed up the computation.
+
 
     while not (
         os.path.exists(os.path.join(model_root, "object_%d.xml" % object_idx))
@@ -450,6 +454,12 @@ def sim_test_batch(
 ):
     model_root = os.path.join(save_dir, "sim_model")
     num_gripper = pts_y.shape[0]
+    data = np.load(OBJECT_DIR, allow_pickle=True).item()
+    images = data["image"]
+    print(f"Type of images: {type(images)}")
+    print(f"Shape of images (if NumPy array): {images.shape if isinstance(images, np.ndarray) else 'Not an array'}")
+    print(f"Sample image: {images[0]}")
+
     object_images = np.load(OBJECT_DIR, allow_pickle=True).item()["image"][object_ids]
     ray.init(num_cpus=num_cpus, log_to_driver=False)
     ray_tasks = []

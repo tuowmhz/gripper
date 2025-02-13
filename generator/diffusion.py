@@ -182,7 +182,9 @@ class Diffusion(LightningModule):
         sample = tensor_data.clone().detach()    # noise, (B, num_points, input_dim)
         rs = np.random.RandomState(self.seed)
         noise = torch.from_numpy(rs.randn(batch_size, self.num_points, self.input_dim)).float().to(device=self.device)
+        #generate noise with the specific tensor shape (batch_size, num_points, input_dim), float - change its datatype to float, to(device=self.device) - move the tensor to the device - make sure it is assigned to specific GPU
         timesteps = self.num_inference_steps * torch.ones((batch_size,), dtype=torch.int64, device=self.device)
+        # creating the timestep of the same size as the batch size
         sample = self.noise_scheduler.add_noise(
             original_samples=typing.cast(torch.FloatTensor, sample),
             noise=typing.cast(torch.FloatTensor, noise),
