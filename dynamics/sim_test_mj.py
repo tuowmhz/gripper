@@ -284,6 +284,12 @@ def sim_test(
     visualize_ctrlpts(
         ctrlpts, os.path.join(save_dir, "%d_%d_ctrlpts.png" % (object_idx, gripper_idx))
     )
+
+    # Save control points as CSV
+    ctrlpts_csv_path = os.path.join(save_dir, "%d_%d_ctrlpts.csv" % (object_idx, gripper_idx))
+    np.savetxt(ctrlpts_csv_path, ctrlpts, delimiter=",", header="x,y", comments="")
+
+
     profile = np.asarray(
         [
             1

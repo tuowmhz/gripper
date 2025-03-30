@@ -22,8 +22,7 @@ from assets.object_sampler import generate_object_xml
 from assets.icon_process import save_icon_mesh, extract_contours
 from dynamics.utils import continuous_signed_delta
 
-OBJECT_DIR = 'data/star_shape.npy'
-
+OBJECT_DIR = 'data/YellowTriangle.npy'
 
 def compute_collision(mesh_path, num_retries: int = 2):
     """
@@ -37,7 +36,7 @@ def compute_collision(mesh_path, num_retries: int = 2):
     -r <voxelresolution>    : Total number of voxels to use. Default is 100,000
     -e <volumeErrorPercent> : Volume error allowed as a percentage. Default is 1%. Valid range is 0.001 to 10
     -d <maxRecursionDepth>  : Maximum recursion depth. Default value is 10.
-    -s <true/false>         : Whether or not to shrinkwrap output to source mesh. Default is true.
+    -s <true/false>         : Whether or not to shrinkwrap output to sou rce mesh. Default is true.
     -f <fillMode>           : Fill mode. Default is 'flood', also 'surface' and 'raycast' are valid.
     -v <maxHullVertCount>   : Maximum number of vertices in the output convex hull. Default value is 64
     -a <true/false>         : Whether or not to run asynchronously. Default is 'true'
